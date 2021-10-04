@@ -121,6 +121,21 @@ found:
     return 0;
   }
 
+  ukvminit(p);
+  if (p->kpagetable == 0) {
+    freeproc(p);
+    release(&p->lock);
+    return 0;
+  }
+
+  char *pa = kalloc();
+  if (pa == 0)
+    panic("kalloc");
+  uint64 va = KSTACK((int)(p - proc));
+  ukvmmap(p, va, (uint64)pa, PGSIZE, PTE_R | PTE_W);
+  p->kstack = va;
+
+
   // Set up new context to start executing at forkret,
   // which returns to user space.
   memset(&p->context, 0, sizeof(p->context));
@@ -142,6 +157,18 @@ freeproc(struct proc *p)
   if(p->pagetable)
     proc_freepagetable(p->pagetable, p->sz);
   p->pagetable = 0;
+
+  if (p->kstack) {
+    pte_t *pte = walk(p->kpagetable, p->kstack, 0);
+    if (pte == 0) return;
+    kfree((void*)PTE2PA(*pte));
+  }
+  p->kstack = 0;
+
+  if (p->kpagetable)
+    ukvmfree(p->kpagetable);
+  p->kpagetable = 0;
+  
   p->sz = 0;
   p->pid = 0;
   p->parent = 0;
@@ -215,11 +242,13 @@ userinit(void)
 
   p = allocproc();
   initproc = p;
-  
+
   // allocate one user page and copy init's instructions
   // and data into it.
   uvminit(p->pagetable, initcode, sizeof(initcode));
   p->sz = PGSIZE;
+
+  ukvmcopy(p->pagetable, p->kpagetable, 0, p->sz);
 
   // prepare for the very first "return" from kernel to user.
   p->trapframe->epc = 0;      // user program counter
@@ -243,9 +272,12 @@ growproc(int n)
 
   sz = p->sz;
   if(n > 0){
+    if (PGROUNDUP(sz + n) > PLIC)
+      return -1;
     if((sz = uvmalloc(p->pagetable, sz, sz + n)) == 0) {
       return -1;
     }
+    ukvmcopy(p->pagetable, p->kpagetable, sz - n, sz);
   } else if(n < 0){
     sz = uvmdealloc(p->pagetable, sz, sz + n);
   }
@@ -275,9 +307,12 @@ fork(void)
   }
   np->sz = p->sz;
 
+  if (ukvmcopy(np->pagetable, np->kpagetable, 0, np->sz) < 0) {
+    release(&np->lock);
+    return -1;
+  }
+  
   np->parent = p;
-
-  np->mask = p->mask;
 
   // copy saved user registers.
   *(np->trapframe) = *(p->trapframe);
@@ -475,6 +510,10 @@ scheduler(void)
         // before jumping back to us.
         p->state = RUNNING;
         c->proc = p;
+
+        w_satp(MAKE_SATP(p->kpagetable));
+        sfence_vma();
+
         swtch(&c->context, &p->context);
 
         // Process is done running for now.
@@ -485,10 +524,15 @@ scheduler(void)
       }
       release(&p->lock);
     }
+#if !defined (LAB_FS)
     if(found == 0) {
       intr_on();
+      kvminithart();
       asm volatile("wfi");
     }
+#else
+    ;
+#endif
   }
 }
 
@@ -694,15 +738,4 @@ procdump(void)
     printf("%d %s %s", p->pid, state, p->name);
     printf("\n");
   }
-}
-
-uint64
-getnproc(void)
-{
-  uint64 n = 0;
-  struct proc *p;
-  for (p = proc; p < &proc[NPROC]; ++p) {
-    if (p->state != UNUSED) ++n;
-  }
-  return n;
 }
