@@ -86,6 +86,43 @@ enum procstate { UNUSED, SLEEPING, RUNNABLE, RUNNING, ZOMBIE };
 struct proc {
   struct spinlock lock;
 
+  uint64 handler;
+  int alarm_interval;
+  int left_ticks;
+  int allow_entrance_handler;
+  uint64 saved_epc;           // saved user program counter
+  uint64 saved_ra;
+  uint64 saved_sp;
+  uint64 saved_gp;
+  uint64 saved_tp;
+  uint64 saved_t0;
+  uint64 saved_t1;
+  uint64 saved_t2;
+  uint64 saved_t3;
+  uint64 saved_t4;
+  uint64 saved_t5;
+  uint64 saved_t6;
+  uint64 saved_a0;
+  uint64 saved_a1;
+  uint64 saved_a2;
+  uint64 saved_a3;
+  uint64 saved_a4;
+  uint64 saved_a5;
+  uint64 saved_a6;
+  uint64 saved_a7;
+  uint64 saved_s0;
+  uint64 saved_s1;
+  uint64 saved_s2;
+  uint64 saved_s3;
+  uint64 saved_s4;
+  uint64 saved_s5;
+  uint64 saved_s6;
+  uint64 saved_s7;
+  uint64 saved_s8;
+  uint64 saved_s9;
+  uint64 saved_s10;
+  uint64 saved_s11;
+ 
   // p->lock must be held when using these:
   enum procstate state;        // Process state
   struct proc *parent;         // Parent process
@@ -98,7 +135,6 @@ struct proc {
   uint64 kstack;               // Virtual address of kernel stack
   uint64 sz;                   // Size of process memory (bytes)
   pagetable_t pagetable;       // User page table
-  pagetable_t kpagetable;      // Kernel page table
   struct trapframe *trapframe; // data page for trampoline.S
   struct context context;      // swtch() here to run process
   struct file *ofile[NOFILE];  // Open files
