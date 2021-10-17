@@ -6,38 +6,4 @@ hart 2 starting
 init: starting sh
 $ usertests
 usertests starting
-test execout: OK
-test copyin: OK
-test copyout: OK
-test copyinstr1: OK
-test copyinstr2: OK
-test copyinstr3: OK
-test truncate1: OK
-test truncate2: OK
-test truncate3: OK
-test reparent2: OK
-test pgbug: OK
-test sbrkbugs: usertrap(): unexpected scause 0x000000000000000c pid=3234
-            sepc=0x0000000000005402 stval=0x0000000000005402
-usertrap(): unexpected scause 0x000000000000000c pid=3235
-            sepc=0x0000000000005402 stval=0x0000000000005402
-OK
-test badarg: OK
-test reparent: OK
-test twochildren: OK
-test forkfork: OK
-test forkforkfork: backtrace:
-0x000000008000301a
-0x0000000080002cda
-0x00000000800028f2
-backtrace:
-0x000000008000301a
-0x0000000080002cda
-0x00000000800028f2
-OK
-test argptest: OK
-test createdelete: OK
-test linkunlink: OK
-test linktest: OK
-test unlinkread: OK
-test concreate: qemu-system-riscv64: terminating on signal 2
+qemu-system-riscv64: terminating on signal 2
