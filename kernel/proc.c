@@ -304,6 +304,12 @@ fork(void)
 
   release(&np->lock);
 
+  for(int i = 0;i < MAX_MMVA;++i){
+    if(p->mmva[i].valid){
+      memmove(&np->mmva[i],&p->mmva[i],sizeof(struct mmva)); 
+      filedup(p->mmva[i].map_file);
+    }
+  }
   return pid;
 }
 
@@ -393,7 +399,12 @@ exit(int status)
   p->state = ZOMBIE;
 
   release(&original_parent->lock);
-
+  for(int i = 0 ;i < MAX_MMVA;++i){
+    if(p->mmva[i].valid){
+      uvmunmap(p->pagetable, p->mmva[i].addr, p->mmva[i].length/PGSIZE, 1);
+      memset(&p->mmva[i], 0, sizeof(struct mmva));
+    }
+  }
   // Jump into the scheduler, never to return.
   sched();
   panic("zombie exit");
